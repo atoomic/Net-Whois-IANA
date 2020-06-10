@@ -6,8 +6,6 @@ use Test::More;
 
 plan skip_all => "do not run boilerplate for AUTOMATED_TESTING" if $ENV{AUTOMATED_TESTING};
 
-plan tests => 4;
-
 sub not_in_file_ok {
     my ( $filename, %regex ) = @_;
     open( my $fh, '<', $filename )
@@ -55,3 +53,4 @@ TODO: {
 
 }
 
+done_testing;
