@@ -2,7 +2,11 @@
 
 use strict;
 use warnings;
-use Test::More tests => 3;
+use Test::More;
+
+plan skip_all => "do not run boilerplate for AUTOMATED_TESTING" if $ENV{AUTOMATED_TESTING};
+
+plan tests => 4;
 
 sub not_in_file_ok {
     my ( $filename, %regex ) = @_;
