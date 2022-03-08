@@ -19,11 +19,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: perl -V
         run: perl -V
       - name: uses install-with-cpm
-        uses: perl-actions/install-with-cpm@v1.3
+        uses: perl-actions/install-with-cpm@stable
         with:
           cpanfile: "cpanfile"
       - name: Makefile.PL
@@ -47,6 +47,8 @@ jobs:
       matrix:
         perl-version:
           [
+            "5.34",
+            "5.32",
             "5.30",
             "5.28",
             "5.26",
@@ -65,11 +67,11 @@ jobs:
       image: perl:${{ matrix.perl-version }}
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: perl -V
         run: perl -V
       - name: uses install-with-cpm
-        uses: perl-actions/install-with-cpm@v1.3
+        uses: perl-actions/install-with-cpm@stable
         with:
           cpanfile: "cpanfile"
           sudo: false
@@ -94,11 +96,11 @@ jobs:
         perl-version: [latest]
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: perl -V
         run: perl -V
       - name: uses install-with-cpm
-        uses: perl-actions/install-with-cpm@v1.3
+        uses: perl-actions/install-with-cpm@stable
         with:
           cpanfile: "cpanfile"
           sudo: false
@@ -131,7 +133,7 @@ jobs:
       - name: perl -V
         run: perl -V
       - name: uses install-with-cpm
-        uses: perl-actions/install-with-cpm@v1.3
+        uses: perl-actions/install-with-cpm@stable
         with:
           cpanfile: "cpanfile"
           sudo: false
