@@ -1,5 +1,7 @@
 {{$NEXT}}
 
+    - Fix t/60-cidrvalidate.t
+
 0.47      2021-10-04 10:33:55-06:00 America/Denver
 
     - Reformat POD to avoid verbatim blocks

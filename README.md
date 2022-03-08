@@ -4,7 +4,7 @@ Net::Whois::IANA - Net::Whois::IANA - A universal WHOIS data extractor.
 
 # VERSION
 
-version 0.47
+version 0.48
 
 # SYNOPSIS
 
