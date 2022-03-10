@@ -1,5 +1,8 @@
 {{$NEXT}}
 
+  - Request a more recent version of Test-Suite:
+    Test2::V0 was introduced in Test-Suite release v0.000071
+
 0.48      2022-03-08 09:51:16-07:00 America/Denver
 
     - Fix t/60-cidrvalidate.t
