@@ -45,7 +45,7 @@ BEGIN {
     # accessors
     # do not use AUTOLOAD - only accept lowercase function name
     # define accessors at compile time
-    my @accessors = qw{country netname descr status source server inetnum inet6num cidr};
+    my @accessors = qw{country netname descr status source server inetnum inet6num cidr abuse fullinfo};
 
     foreach my $accessor (@accessors) {
         no strict 'refs';
