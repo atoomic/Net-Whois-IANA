@@ -15,7 +15,7 @@ use base 'Exporter';
 
 our $WHOIS_PORT           = 43;
 our $WHOIS_TIMEOUT        = 30;
-our @DEFAULT_SOURCE_ORDER = qw(arin ripe apnic lacnic afrinic);
+our @DEFAULT_SOURCE_ORDER = qw( arin ripe apnic lacnic afrinic idnic jpnic krnic );
 
 our %IANA;
 our @IANA;
@@ -24,12 +24,14 @@ BEGIN {
     # populate the hash at compile time
 
     %IANA = (
-        apnic   => [ [ 'whois.apnic.net', $WHOIS_PORT, $WHOIS_TIMEOUT, \&apnic_query ], ],
-        ripe    => [ [ 'whois.ripe.net', $WHOIS_PORT, $WHOIS_TIMEOUT, \&ripe_query ], ],
-        arin    => [ [ 'whois.arin.net', $WHOIS_PORT, $WHOIS_TIMEOUT, \&arin_query ], ],
-        lacnic  => [ [ 'whois.lacnic.net', $WHOIS_PORT, $WHOIS_TIMEOUT, \&lacnic_query ], ],
-        afrinic => [ [ 'whois.afrinic.net', $WHOIS_PORT, $WHOIS_TIMEOUT, \&afrinic_query ],
-        ],
+        afrinic => [ [ 'whois.afrinic.net', $WHOIS_PORT, $WHOIS_TIMEOUT, \&afrinic_query ] ],
+        apnic   => [ [ 'whois.apnic.net',   $WHOIS_PORT, $WHOIS_TIMEOUT, \&apnic_query ]   ],
+        arin    => [ [ 'whois.arin.net',    $WHOIS_PORT, $WHOIS_TIMEOUT, \&arin_query ]    ],
+        lacnic  => [ [ 'whois.lacnic.net',  $WHOIS_PORT, $WHOIS_TIMEOUT, \&lacnic_query ]  ],
+        ripe    => [ [ 'whois.ripe.net',    $WHOIS_PORT, $WHOIS_TIMEOUT, \&ripe_query ]    ],
+        idnic   => [ [ 'whois.idnic.net',   $WHOIS_PORT, $WHOIS_TIMEOUT, \&idnic_query ]   ],
+        jpnic   => [ [ 'whois.ad.jp',       $WHOIS_PORT, $WHOIS_TIMEOUT, \&jpnic_query ]   ],
+        krnic   => [ [ 'whois.krnic.net',   $WHOIS_PORT, $WHOIS_TIMEOUT, \&krnic_query ]   ],
     );
 
     @IANA = sort keys %IANA;
@@ -540,7 +542,12 @@ sub lacnic_query ($$) {
     return lacnic_process_query(%query);
 }
 
-*afrinic_read_query = *apnic_read_query;
+BEGIN {
+    *afrinic_read_query = *apnic_read_query;
+    *idnic_read_query   = *apnic_read_query;
+    *jpnic_read_query   = *apnic_read_query;
+    *krnic_read_query   = *apnic_read_query;
+}
 
 sub afrinic_process_query (%) {
     my %query = @_;
@@ -565,6 +572,56 @@ sub afrinic_query ($$) {
     my %query = afrinic_read_query( $sock, $ip );
 
     return afrinic_process_query(%query);
+}
+
+sub idnic_process_query (%) {
+    my %query = @_;
+
+    $query{source}     = 'IDNIC';
+
+#use Test::More; note explain \%query;
+
+    return %query;
+}
+
+sub jpnic_process_query (%) {
+    my %query = @_;
+
+    $query{source}     = 'JPNIC';
+
+    return %query;
+}
+
+sub krnic_process_query (%) {
+    my %query = @_;
+
+    $query{source}     = 'KRNIC';
+
+    return %query;
+}
+
+sub idnic_query ($$) {
+    my ( $sock, $ip ) = @_;
+
+    my %query = idnic_read_query( $sock, $ip );
+
+    return idnic_process_query(%query);
+}
+
+sub jpnic_query ($$) {
+    my ( $sock, $ip ) = @_;
+
+    my %query = jpnic_read_query( $sock, $ip );
+
+    return jpnic_process_query(%query);
+}
+
+sub krnic_query ($$) {
+    my ( $sock, $ip ) = @_;
+
+    my %query = krnic_read_query( $sock, $ip );
+
+    return krnic_process_query(%query);
 }
 
 sub is_mine ($$;@) {
