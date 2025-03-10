@@ -18,7 +18,7 @@ my %WriteMakefileArgs = (
   "NAME" => "Net::Whois::IANA",
   "PREREQ_PM" => {
     "IO::Socket" => 0,
-    "Net::CIDR" => 0
+    "Net::CIDR" => '0.22',
   },
   "TEST_REQUIRES" => {
     "ExtUtils::MakeMaker" => 0,
