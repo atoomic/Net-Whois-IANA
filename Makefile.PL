@@ -18,7 +18,7 @@ my %WriteMakefileArgs = (
   "NAME" => "Net::Whois::IANA",
   "PREREQ_PM" => {
     "IO::Socket" => 0,
-    "Net::CIDR" => 0
+    "Net::CIDR" => '0.22',
   },
   "TEST_REQUIRES" => {
     "ExtUtils::MakeMaker" => 0,
@@ -51,7 +51,7 @@ my %FallbackPrereqs = (
   "FindBin" => 0,
   "IO::Socket" => 0,
   "List::MoreUtils" => 0,
-  "Net::CIDR" => 0,
+  "Net::CIDR" => '0.22',
   "Test2::Bundle::Extended" => 0,
   "Test2::Plugin::NoWarnings" => 0,
   "Test2::Suite" => "0.000071",
