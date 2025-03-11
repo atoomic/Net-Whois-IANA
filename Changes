@@ -1,5 +1,7 @@
 {{$NEXT}}
 
+0.50      2025-03-11 17:44:03-06:00 America/Denver
+
   - Update Makefile.PL Fallback prereqs for Net::CIDR >= 0.22 fix to cidrvalidate (brian d foy)
   - Indent the list (Nicolas R)
   - Add missing abuse and fullinfo accessors (Stephan Hradek)

@@ -4,7 +4,7 @@ Net::Whois::IANA - Net::Whois::IANA - A universal WHOIS data extractor.
 
 # VERSION
 
-version 0.49
+version 0.50
 
 # SYNOPSIS
 
@@ -20,7 +20,7 @@ print "Status: "  , $iana->status()             , "\n";
 print "Source: "  , $iana->source()             , "\n";
 print "Server: "  , $iana->server()             , "\n";
 print "Inetnum: " , $iana->inetnum()            , "\n";
-print "CIDR: "    , join(",", @{$iana->cidr()}) , "\n";
+print "CIDR: "    , join(",", $iana->cidr())    , "\n";
 ```
 
 # DESCRIPTION
