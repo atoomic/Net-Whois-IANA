@@ -1,4 +1,4 @@
-name: testsuite
+name: ci
 
 on:
   push:
@@ -9,7 +9,9 @@ on:
   pull_request:
 
 jobs:
+
   ubuntu:
+    name: "quick test"
     env:
       PERL_USE_UNSAFE_INC: 0
       AUTHOR_TESTING: 1
@@ -19,14 +21,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: perl -V
-      - name: uses install-with-cpm
+      - name: Install Dependencies
         uses: perl-actions/install-with-cpm@v1
         with:
           cpanfile: "cpanfile"
-      - name: Makefile.PL
-        run: perl -I$(pwd) Makefile.PL
+      - run: perl Makefile.PL
+      - run: make
       - run: make test
 
   perl-versions:
@@ -36,37 +38,35 @@ jobs:
       perl-versions: ${{ steps.action.outputs.perl-versions }}
     steps:
       - id: action
-        uses: perl-actions/perl-versions@v1
+        uses: perl-actions/perl-versions@v2
         with:
           since-perl: v5.8
+          with-devel: true
 
-  linux:
-    name: "Perl ${{ matrix.perl-version }}"
-    needs:
-      - ubuntu
-      - perl-versions
+  perl:
+    name: "Perl v${{ matrix.perl-version }}"
+    needs: [ubuntu, perl-versions]
+    runs-on: ubuntu-latest
+
     env:
       PERL_USE_UNSAFE_INC: 0
       AUTHOR_TESTING: 1
       AUTOMATED_TESTING: 1
       RELEASE_TESTING: 1
 
-    runs-on: ubuntu-latest
-
     strategy:
       fail-fast: false
       matrix:
-        perl-version: ${{ fromJson (needs.perl-versions.outputs.perl-versions) }}
+        perl-version: ${{ fromJson(needs.perl-versions.outputs.perl-versions) }}
 
-    container: perldocker/perl-tester:${{ matrix.perl-version }}
+    container:
+      image: perldocker/perl-tester:${{ matrix.perl-version }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: perl -V
-      - name: uses install-with-cpm
-        uses: perl-actions/install-with-cpm@v1
-        with:
-          cpanfile: "cpanfile"
-          sudo: false
+      - name: Install Dependencies
+        run: cpm install -g --show-build-log-on-failure --cpanfile cpanfile
       - run: perl Makefile.PL
+      - run: make
       - run: make test
