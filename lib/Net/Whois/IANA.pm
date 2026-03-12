@@ -115,6 +115,8 @@ sub is_valid_ipv4 ($) {
 sub is_valid_ipv6 {
     my ($ip) = @_;
 
+    return unless defined $ip && length $ip;
+
     return
       if $ip =~ /^:[^:]/
       || $ip =~ /[^:]:$/;    # Can't have single : on front or back
