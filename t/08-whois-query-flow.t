@@ -508,7 +508,6 @@ subtest 'is_mine' => sub {
         is $cidrlookup_args[2], '2001:db8::/32',
             'IPv6 CIDR preserved alongside IPv4';
     };
-
     $mock_cidr->unmock_all;
 };
 
