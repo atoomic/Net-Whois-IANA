@@ -176,7 +176,7 @@ sub set_source ($$) {
     }
     return 2
       unless ref $source eq 'HASH'
-      && scalar grep { ref $_ && ref $_ eq 'ARRAY' && @{$_} && ref $_->[0] && ref $_->[0] eq 'ARRAY' && @{ $_->[0] } && $_->[0][0] } values %{$source} == scalar keys %{$source};
+      && ( scalar grep { ref $_ && ref $_ eq 'ARRAY' && @{$_} && ref $_->[0] && ref $_->[0] eq 'ARRAY' && @{ $_->[0] } && $_->[0][0] } values %{$source} ) == scalar keys %{$source};
     $self->{source} = $source;
     return 0;
 }
