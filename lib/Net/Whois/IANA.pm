@@ -15,7 +15,7 @@ use base 'Exporter';
 
 our $WHOIS_PORT           = 43;
 our $WHOIS_TIMEOUT        = 30;
-our @DEFAULT_SOURCE_ORDER = qw(arin ripe apnic lacnic afrinic);
+our @DEFAULT_SOURCE_ORDER = qw(arin ripe apnic lacnic afrinic jpnic krnic idnic);
 
 our %IANA;
 our @IANA;
@@ -30,6 +30,9 @@ BEGIN {
         lacnic  => [ [ 'whois.lacnic.net', $WHOIS_PORT, $WHOIS_TIMEOUT, \&lacnic_query ], ],
         afrinic => [ [ 'whois.afrinic.net', $WHOIS_PORT, $WHOIS_TIMEOUT, \&afrinic_query ],
         ],
+        jpnic  => [ [ 'whois.nic.ad.jp',  $WHOIS_PORT, $WHOIS_TIMEOUT, \&apnic_query ], ],
+        krnic  => [ [ 'whois.nic.or.kr',  $WHOIS_PORT, $WHOIS_TIMEOUT, \&apnic_query ], ],
+        idnic  => [ [ 'whois.idnic.net',   $WHOIS_PORT, $WHOIS_TIMEOUT, \&apnic_query ], ],
     );
 
     @IANA = sort keys %IANA;
@@ -618,7 +621,8 @@ This is a simple module to extract the descriptive whois
 information about various IPs as they are stored in the four
 regional whois registries of IANA - RIPE (Europe, Middle East)
 APNIC (Asia/Pacific), ARIN (North America), AFRINIC (Africa)
-and LACNIC (Latin American & Caribbean).
+and LACNIC (Latin American & Caribbean), as well as national NICs
+such as JPNIC (Japan), KRNIC (Korea), and IDNIC (Indonesia).
 
 It is designed to serve statistical harvesters of various
 access logs and likewise, therefore it only collects partial

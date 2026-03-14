@@ -493,4 +493,127 @@ subtest 'is_mine' => sub {
     $mock_cidr->unmock_all;
 };
 
+# =============================================================================
+# Extra IANA servers: idnic, jpnic, krnic (issue #26)
+# =============================================================================
+
+subtest 'extra IANA servers are registered' => sub {
+
+    # These national NICs should be in %IANA
+    for my $nic (qw(idnic jpnic krnic)) {
+        ok exists $IANA{$nic}, "$nic exists in %IANA";
+        is ref $IANA{$nic}, 'ARRAY', "$nic value is an arrayref";
+        is ref $IANA{$nic}[0], 'ARRAY', "$nic has server config array";
+        ok $IANA{$nic}[0][0], "$nic has a hostname";
+        # Port is undef at compile time (BEGIN block); whois_connect defaults it at runtime
+        ok !defined($IANA{$nic}[0][1]) || $IANA{$nic}[0][1] == 43,
+            "$nic port is undef or 43 (defaulted at runtime)";
+        is ref $IANA{$nic}[0][3], 'CODE', "$nic has a query callback";
+    }
+
+    # They should also appear in @IANA (sorted keys of %IANA)
+    for my $nic (qw(idnic jpnic krnic)) {
+        ok( ( grep { $_ eq $nic } @IANA ), "$nic appears in \@IANA" );
+    }
+};
+
+subtest 'extra IANA servers are in DEFAULT_SOURCE_ORDER' => sub {
+
+    # The national NICs should be queried after the main 5 registries
+    for my $nic (qw(idnic jpnic krnic)) {
+        ok( ( grep { $_ eq $nic } @Net::Whois::IANA::DEFAULT_SOURCE_ORDER ),
+            "$nic is in \@Net::Whois::IANA::DEFAULT_SOURCE_ORDER" );
+    }
+
+    # Main registries should come before national NICs
+    my %pos;
+    for my $i ( 0 .. $#Net::Whois::IANA::DEFAULT_SOURCE_ORDER ) {
+        $pos{ $Net::Whois::IANA::DEFAULT_SOURCE_ORDER[$i] } = $i;
+    }
+    for my $main (qw(arin ripe apnic lacnic afrinic)) {
+        for my $nic (qw(idnic jpnic krnic)) {
+            ok $pos{$main} < $pos{$nic},
+                "$main comes before $nic in source order";
+        }
+    }
+};
+
+subtest 'whois_query can reach extra IANA servers' => sub {
+
+    my $queried_sources = [];
+
+    $mock_iana->redefine(
+        source_connect => sub {
+            my ( $self, $source_name ) = @_;
+            push @$queried_sources, $source_name;
+
+            # Only jpnic returns a result
+            if ( $source_name eq 'jpnic' ) {
+                $self->{query_sub} = sub {
+                    return (
+                        country    => 'JP',
+                        netname    => 'JPNIC-NET',
+                        descr      => 'Japan Network',
+                        inetnum    => '58.0.0.0 - 58.0.0.255',
+                        cidr       => '58.0.0.0/24',
+                        source     => 'JPNIC',
+                        permission => 'allowed',
+                        fullinfo   => "inetnum: 58.0.0.0 - 58.0.0.255\n",
+                    );
+                };
+                return FakeSocket->new([]);
+            }
+
+            # Other sources return empty
+            $self->{query_sub} = sub { return () };
+            return FakeSocket->new([]);
+        },
+    );
+
+    my $iana   = Net::Whois::IANA->new;
+    my $result = $iana->whois_query( -ip => '58.0.0.1' );
+
+    ok $result && keys %$result, 'got a result from jpnic';
+    is $result->{country}, 'JP', 'country from jpnic';
+    is $result->{server}, 'JPNIC', 'server set to JPNIC';
+
+    # Should have iterated through all 5 main sources first
+    my @main = grep { /^(arin|ripe|apnic|lacnic|afrinic)$/ } @$queried_sources;
+    is scalar @main, 5, 'all 5 main registries queried before national NICs';
+
+    $mock_iana->unmock_all;
+};
+
+subtest 'whois_query with -whois restricts to extra server' => sub {
+
+    my $connected_sources = [];
+
+    $mock_iana->redefine(
+        source_connect => sub {
+            my ( $self, $source_name ) = @_;
+            return undef unless $self->{source}{$source_name};
+            push @$connected_sources, $source_name;
+            $self->{query_sub} = sub {
+                return (
+                    country    => 'KR',
+                    netname    => 'KRNIC-NET',
+                    inetnum    => '59.0.0.0 - 59.0.0.255',
+                    cidr       => ['59.0.0.0/24'],
+                    permission => 'allowed',
+                    fullinfo   => "inetnum: 59.0.0.0\n",
+                );
+            };
+            return FakeSocket->new([]);
+        },
+    );
+
+    my $iana = Net::Whois::IANA->new;
+    $iana->whois_query( -ip => '59.0.0.1', -whois => 'krnic' );
+
+    is $iana->server(), 'KRNIC', 'server matches restricted krnic source';
+    is $connected_sources, ['krnic'], 'only krnic was connected';
+
+    $mock_iana->unmock_all;
+};
+
 done_testing;
