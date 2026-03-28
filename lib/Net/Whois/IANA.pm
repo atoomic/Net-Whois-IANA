@@ -15,7 +15,7 @@ use base 'Exporter';
 
 our $WHOIS_PORT           = 43;
 our $WHOIS_TIMEOUT        = 30;
-our @DEFAULT_SOURCE_ORDER = qw(arin ripe apnic lacnic afrinic);
+our @DEFAULT_SOURCE_ORDER = qw(arin ripe apnic lacnic afrinic jpnic krnic idnic);
 
 our %IANA;
 our @IANA;
@@ -30,6 +30,9 @@ BEGIN {
         lacnic  => [ [ 'whois.lacnic.net', $WHOIS_PORT, $WHOIS_TIMEOUT, \&lacnic_query ], ],
         afrinic => [ [ 'whois.afrinic.net', $WHOIS_PORT, $WHOIS_TIMEOUT, \&afrinic_query ],
         ],
+        jpnic => [ [ 'whois.nic.ad.jp', $WHOIS_PORT, $WHOIS_TIMEOUT, \&jpnic_query ], ],
+        krnic => [ [ 'whois.kisa.or.kr', $WHOIS_PORT, $WHOIS_TIMEOUT, \&krnic_query ], ],
+        idnic => [ [ 'whois.idnic.net', $WHOIS_PORT, $WHOIS_TIMEOUT, \&idnic_query ], ],
     );
 
     @IANA = sort keys %IANA;
@@ -570,6 +573,121 @@ sub afrinic_query ($$) {
     return afrinic_process_query(%query);
 }
 
+sub jpnic_read_query ($$) {
+    my ( $sock, $ip ) = @_;
+
+    my %query = ( fullinfo => '' );
+    print $sock "$ip\n";
+
+    # JPNIC uses bracket-style fields: "a. [Network Number] 1.2.3.0/24"
+    # and also standard "key: value" lines
+    my %field_map = (
+        'network number' => 'inetnum',
+        'network name'   => 'netname',
+        'organization name' => 'descr',
+        'assigned date'  => 'status',
+    );
+    while (<$sock>) {
+        $query{fullinfo} .= $_;
+        close $sock and return ( permission => 'denied' ) if /^\%201|ERROR:201/;
+        next if /^\%/ || /^\#/ || /^\[/;
+        s/\s+$//;
+
+        # bracket-style: "a. [Field Name]  value"
+        if ( /^\w+\.\s+\[(.+?)\]\s+(.+)/ ) {
+            my ( $field, $value ) = ( lc($1), $2 );
+            $value =~ s/^\s+//;
+            my $mapped = $field_map{$field} || $field;
+            $query{$mapped} .= ( $query{$mapped} ? ' ' : '' ) . $value;
+            next;
+        }
+
+        # standard colon-separated
+        next unless /\:/;
+        my ( $field, $value ) = split( /:/, $_, 2 );
+        $value =~ s/^\s+//;
+        $query{ lc($field) } .= ( $query{ lc($field) } ? ' ' : '' ) . $value;
+    }
+    close $sock;
+    return %query;
+}
+
+sub jpnic_process_query (%) {
+    my %query = @_;
+
+    return () if !$query{inetnum} && !$query{inet6num};
+
+    $query{permission} = 'allowed';
+    $query{source}     = 'JPNIC';
+
+    if ( $query{inetnum} && $query{inetnum} =~ m{/} ) {
+        # Already in CIDR notation
+        $query{cidr} = [ $query{inetnum} ];
+    }
+    elsif ( $query{inetnum} || $query{inet6num} ) {
+        $query{cidr} = [ Net::CIDR::range2cidr( uc( $query{inet6num} || $query{inetnum} ) ) ];
+    }
+
+    return %query;
+}
+
+sub jpnic_query ($$) {
+    my ( $sock, $ip ) = @_;
+
+    my %query = jpnic_read_query( $sock, $ip );
+    return jpnic_process_query(%query);
+}
+
+# KRNIC uses colon-separated format similar to APNIC
+*krnic_read_query = *apnic_read_query;
+
+sub krnic_process_query (%) {
+    my %query = @_;
+
+    return () if !$query{inetnum} && !$query{inet6num} && !$query{'ipv4 address'};
+
+    $query{permission} = 'allowed';
+    $query{source}     = 'KRNIC';
+
+    # KRNIC may use 'ipv4 address' instead of 'inetnum'
+    $query{inetnum} ||= $query{'ipv4 address'} if $query{'ipv4 address'};
+
+    if ( $query{inetnum} || $query{inet6num} ) {
+        $query{cidr} = [ Net::CIDR::range2cidr( uc( $query{inet6num} || $query{inetnum} ) ) ];
+    }
+
+    return %query;
+}
+
+sub krnic_query ($$) {
+    my ( $sock, $ip ) = @_;
+
+    my %query = krnic_read_query( $sock, $ip );
+    return krnic_process_query(%query);
+}
+
+# IDNIC uses RPSL-like format similar to APNIC
+*idnic_read_query = *apnic_read_query;
+
+sub idnic_process_query (%) {
+    my %query = @_;
+
+    return () if !$query{inetnum} && !$query{inet6num};
+
+    $query{permission} = 'allowed';
+    $query{source}     = 'IDNIC';
+    $query{cidr} = [ Net::CIDR::range2cidr( uc( $query{inet6num} || $query{inetnum} ) ) ];
+
+    return %query;
+}
+
+sub idnic_query ($$) {
+    my ( $sock, $ip ) = @_;
+
+    my %query = idnic_read_query( $sock, $ip );
+    return idnic_process_query(%query);
+}
+
 sub is_mine ($$;@) {
     my ( $self, $ip, @cidr ) = @_;
 
@@ -623,10 +741,12 @@ Net::Whois::IANA - A universal WHOIS data extractor.
 =head1 ABSTRACT
 
 This is a simple module to extract the descriptive whois
-information about various IPs as they are stored in the four
-regional whois registries of IANA - RIPE (Europe, Middle East)
+information about various IPs as they are stored in the regional
+whois registries of IANA - RIPE (Europe, Middle East)
 APNIC (Asia/Pacific), ARIN (North America), AFRINIC (Africa)
-and LACNIC (Latin American & Caribbean).
+and LACNIC (Latin American & Caribbean) - as well as National
+Internet Registries (NIRs): JPNIC (Japan), KRNIC (Korea),
+and IDNIC (Indonesia).
 
 It is designed to serve statistical harvesters of various
 access logs and likewise, therefore it only collects partial
@@ -661,7 +781,7 @@ supposed to be attached to a log parser (for example an Apache
 web server log) to provide various accounting and statistics
 information.
 
-The query is performed in a roundrobin system over all four
+The query is performed in a roundrobin system over all
 registries until a valid entry is found. The valid entry stops
 the main query loop and the object with information is returned.
 Unfortunately, the output formats of each one of the registries
