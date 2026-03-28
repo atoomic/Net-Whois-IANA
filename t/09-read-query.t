@@ -424,6 +424,83 @@ subtest 'afrinic_read_query: standard response' => sub {
 };
 
 # =============================================================================
+# jpnic_read_query
+# =============================================================================
+
+subtest 'jpnic_read_query: bracket-style fields' => sub {
+    my $sock = fake_sock([
+        "[ JPNIC database provides information regarding IP address and ASN. ]\n",
+        "\n",
+        "a. [Network Number]     58.0.0.0/8\n",
+        "b. [Network Name]       JPNIC-NET-JP\n",
+        "g. [Organization Name]  Japan Network Information Center\n",
+        "country:        JP\n",
+    ]);
+
+    my %q = Net::Whois::IANA::jpnic_read_query( $sock, '58.0.0.1' );
+
+    is $q{inetnum}, '58.0.0.0/8', 'network number mapped to inetnum';
+    is $q{netname}, 'JPNIC-NET-JP', 'network name mapped to netname';
+    is $q{descr}, 'Japan Network Information Center', 'organization name mapped to descr';
+    is $q{country}, 'JP', 'country parsed from colon format';
+    like $q{fullinfo}, qr/JPNIC database/, 'fullinfo contains raw output';
+};
+
+subtest 'jpnic_read_query: standard colon format' => sub {
+    my $sock = fake_sock([
+        "inetnum:        58.0.0.0 - 58.255.255.255\n",
+        "netname:        JPNIC-NET\n",
+        "country:        JP\n",
+        "source:         JPNIC\n",
+    ]);
+
+    my %q = Net::Whois::IANA::jpnic_read_query( $sock, '58.0.0.1' );
+
+    is $q{inetnum}, '58.0.0.0 - 58.255.255.255', 'inetnum from colon format';
+    is $q{netname}, 'JPNIC-NET', 'netname from colon format';
+};
+
+subtest 'jpnic_read_query: permission denied' => sub {
+    my $sock = fake_sock([
+        "%201 access denied\n",
+    ]);
+
+    my %q = Net::Whois::IANA::jpnic_read_query( $sock, '58.0.0.1' );
+
+    is $q{permission}, 'denied', 'permission denied on %201';
+    ok tied(*$sock)->{closed}, 'socket closed';
+};
+
+subtest 'jpnic_read_query: skips comment lines' => sub {
+    my $sock = fake_sock([
+        "% query results\n",
+        "# another comment\n",
+        "netname:        TEST\n",
+        "country:        JP\n",
+    ]);
+
+    my %q = Net::Whois::IANA::jpnic_read_query( $sock, '58.0.0.1' );
+
+    is $q{netname}, 'TEST', 'data parsed after comments';
+};
+
+# =============================================================================
+# krnic_read_query and idnic_read_query are aliases for apnic_read_query
+# =============================================================================
+
+subtest 'krnic_read_query is apnic_read_query' => sub {
+    is \&Net::Whois::IANA::krnic_read_query,
+       \&Net::Whois::IANA::apnic_read_query,
+       'krnic_read_query aliased to apnic_read_query';
+};
+
+subtest 'idnic_read_query is apnic_read_query' => sub {
+    is \&Net::Whois::IANA::idnic_read_query,
+       \&Net::Whois::IANA::apnic_read_query,
+       'idnic_read_query aliased to apnic_read_query';
+};
+
+# =============================================================================
 # Edge cases: fullinfo accumulation
 # =============================================================================
 

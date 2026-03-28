@@ -305,6 +305,113 @@ subtest 'afrinic_process_query' => sub {
     };
 };
 
+# --- jpnic_process_query ---
+
+subtest 'jpnic_process_query' => sub {
+
+    subtest 'valid query with inetnum in CIDR notation' => sub {
+        my %result = Net::Whois::IANA::jpnic_process_query(
+            inetnum => '58.0.0.0/8',
+            country => 'JP',
+            netname => 'JPNIC-NET',
+            descr   => 'Japan Network Information Center',
+        );
+        is $result{permission}, 'allowed', 'permission set';
+        is $result{source}, 'JPNIC', 'source set to JPNIC';
+        is ref $result{cidr}, 'ARRAY', 'cidr is arrayref';
+        is $result{cidr}[0], '58.0.0.0/8', 'cidr preserved from CIDR notation';
+    };
+
+    subtest 'valid query with range inetnum' => sub {
+        my %result = Net::Whois::IANA::jpnic_process_query(
+            inetnum => '58.0.0.0 - 58.255.255.255',
+            country => 'JP',
+            netname => 'JPNIC-NET',
+        );
+        is $result{permission}, 'allowed', 'permission set';
+        is ref $result{cidr}, 'ARRAY', 'cidr is arrayref';
+        ok scalar @{ $result{cidr} }, 'cidr has entries';
+    };
+
+    subtest 'valid query with inet6num' => sub {
+        my %result = Net::Whois::IANA::jpnic_process_query(
+            inet6num => '2001:0DB8::/32',
+            country  => 'JP',
+        );
+        is $result{permission}, 'allowed', 'permission set';
+        is ref $result{cidr}, 'ARRAY', 'cidr is arrayref';
+    };
+
+    subtest 'rejects missing inetnum and inet6num' => sub {
+        my %result = Net::Whois::IANA::jpnic_process_query(
+            country => 'JP',
+            netname => 'JPNIC-NET',
+        );
+        is scalar keys %result, 0, 'returns empty without inetnum';
+    };
+};
+
+# --- krnic_process_query ---
+
+subtest 'krnic_process_query' => sub {
+
+    subtest 'valid query with inetnum' => sub {
+        my %result = Net::Whois::IANA::krnic_process_query(
+            inetnum => '59.0.0.0 - 59.25.255.255',
+            country => 'KR',
+            netname => 'KRNIC-NET',
+            descr   => 'Korea Internet & Security Agency',
+        );
+        is $result{permission}, 'allowed', 'permission set';
+        is $result{source}, 'KRNIC', 'source set to KRNIC';
+        is ref $result{cidr}, 'ARRAY', 'cidr is arrayref';
+    };
+
+    subtest 'valid query with ipv4 address field' => sub {
+        my %result = Net::Whois::IANA::krnic_process_query(
+            'ipv4 address' => '59.0.0.0 - 59.25.255.255',
+            country        => 'KR',
+            netname        => 'KRNIC-NET',
+        );
+        is $result{permission}, 'allowed', 'permission set';
+        is $result{inetnum}, '59.0.0.0 - 59.25.255.255', 'inetnum mapped from ipv4 address';
+        is ref $result{cidr}, 'ARRAY', 'cidr is arrayref';
+    };
+
+    subtest 'rejects missing inetnum and ipv4 address' => sub {
+        my %result = Net::Whois::IANA::krnic_process_query(
+            country => 'KR',
+            netname => 'TEST',
+        );
+        is scalar keys %result, 0, 'returns empty without address info';
+    };
+};
+
+# --- idnic_process_query ---
+
+subtest 'idnic_process_query' => sub {
+
+    subtest 'valid query' => sub {
+        my %result = Net::Whois::IANA::idnic_process_query(
+            inetnum => '49.0.0.0 - 49.255.255.255',
+            country => 'ID',
+            netname => 'IDNIC-NET',
+            descr   => 'Indonesia Network Information Center',
+        );
+        is $result{permission}, 'allowed', 'permission set';
+        is $result{source}, 'IDNIC', 'source set to IDNIC';
+        is ref $result{cidr}, 'ARRAY', 'cidr is arrayref';
+    };
+
+    subtest 'rejects missing inetnum' => sub {
+        my %result = Net::Whois::IANA::idnic_process_query(
+            country => 'ID',
+            netname => 'TEST',
+        );
+        is scalar keys %result, 0, 'returns empty without inetnum';
+    };
+};
+
 # --- post_process_query ---
 
 subtest 'post_process_query' => sub {

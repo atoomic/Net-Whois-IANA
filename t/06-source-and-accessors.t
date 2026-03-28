@@ -32,7 +32,7 @@ subtest 'set_source' => sub {
     };
 
     subtest 'all known sources accepted' => sub {
-        for my $name (qw(arin ripe apnic lacnic afrinic)) {
+        for my $name (qw(arin ripe apnic lacnic afrinic jpnic krnic idnic)) {
             my $iana = Net::Whois::IANA->new;
             is $iana->set_source($name), 0, "returns 0 for $name";
         }
