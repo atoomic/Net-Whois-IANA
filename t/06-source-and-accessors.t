@@ -114,6 +114,17 @@ subtest 'init_query' => sub {
         is $warnings, [], 'no warnings for known whois server';
         is [ sort keys %{ $iana->{source} } ], ['ripe'], 'source restricted to ripe';
     };
+
+    subtest 'rejects invalid custom -mywhois source' => sub {
+        my $iana = Net::Whois::IANA->new;
+        my $result;
+        my $warnings = warnings {
+            $result = $iana->init_query(-ip => '8.8.8.8', -mywhois => { bad => 'string' })
+        };
+        ok scalar @$warnings, 'warns on invalid custom source';
+        like $warnings->[0], qr/Custom sources must be of form/, 'proper warning message';
+        is $result, {}, 'returns empty hashref on invalid custom source';
+    };
 };
 
 # --- accessor methods ---

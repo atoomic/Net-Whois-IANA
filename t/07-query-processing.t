@@ -214,6 +214,28 @@ subtest 'arin_process_query' => sub {
         );
         is scalar keys %result, 0, 'returns empty for AFRINIC orgid';
     };
+
+    subtest 'does not reject orgid containing registry name as substring' => sub {
+        my %result = Net::Whois::IANA::arin_process_query(
+            orgname  => 'LACNIC-PARTNER Corp',
+            orgid    => 'LACNIC-PARTNER',
+            netrange => '10.0.0.0 - 10.0.0.255',
+            cidr     => '10.0.0.0/24',
+            nettype  => 'Direct Allocation',
+        );
+        ok scalar keys %result, 'orgid with registry substring is not rejected';
+        is $result{permission}, 'allowed', 'permission set';
+    };
+
+    subtest 'rejects orgid with leading/trailing whitespace' => sub {
+        my %result = Net::Whois::IANA::arin_process_query(
+            orgname  => 'APNIC',
+            orgid    => '  APNIC  ',
+            netrange => '1.0.0.0 - 1.0.0.255',
+            cidr     => '1.0.0.0/24',
+        );
+        is scalar keys %result, 0, 'whitespace-padded orgid still rejected';
+    };
 };
 
 # --- lacnic_process_query ---

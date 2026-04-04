@@ -218,6 +218,7 @@ Custom sources must be of form:
 	...,
 );
 		};
+        return {};
     }
 }
 
@@ -456,7 +457,7 @@ sub arin_process_query (%) {
     my %query = @_;
 
     return ()
-      if $query{orgid} && $query{orgid} =~ /^\s*RIPE|LACNIC|APNIC|AFRINIC\s*$/;
+      if $query{orgid} && $query{orgid} =~ /^\s*(?:RIPE|LACNIC|APNIC|AFRINIC)\s*$/;
 
     $query{permission} = 'allowed';
     $query{descr}      = $query{orgname};
