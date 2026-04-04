@@ -577,24 +577,24 @@ sub jpnic_read_query ($$) {
     my ( $sock, $ip ) = @_;
 
     my %query = ( fullinfo => '' );
-    print $sock "$ip\n";
+    print $sock "$ip/e\n";    # /e requests English output
 
     # JPNIC uses bracket-style fields: "a. [Network Number] 1.2.3.0/24"
     # and also standard "key: value" lines
     my %field_map = (
-        'network number' => 'inetnum',
-        'network name'   => 'netname',
+        'network number'    => 'inetnum',
+        'network name'      => 'netname',
         'organization name' => 'descr',
-        'assigned date'  => 'status',
     );
     while (<$sock>) {
         $query{fullinfo} .= $_;
         close $sock and return ( permission => 'denied' ) if /^\%201|ERROR:201/;
-        next if /^\%/ || /^\#/ || /^\[/;
+        next if /^\%/ || /^\#/;
+        next if /^\[ .+ \]\s*$/;    # skip banner lines like "[ JPNIC database... ]"
         s/\s+$//;
 
-        # bracket-style: "a. [Field Name]  value"
-        if ( /^\w+\.\s+\[(.+?)\]\s+(.+)/ ) {
+        # bracket-style: "a. [Field Name]  value" or "[Field Name]  value"
+        if ( /^(?:\w+\.\s+)?\[(.+?)\]\s+(.+)/ ) {
             my ( $field, $value ) = ( lc($1), $2 );
             $value =~ s/^\s+//;
             my $mapped = $field_map{$field} || $field;

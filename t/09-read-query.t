@@ -434,6 +434,7 @@ subtest 'jpnic_read_query: bracket-style fields' => sub {
         "a. [Network Number]     58.0.0.0/8\n",
         "b. [Network Name]       JPNIC-NET-JP\n",
         "g. [Organization Name]  Japan Network Information Center\n",
+        "[Assigned Date]         2005/01/28\n",
         "country:        JP\n",
     ]);
 
@@ -442,6 +443,7 @@ subtest 'jpnic_read_query: bracket-style fields' => sub {
     is $q{inetnum}, '58.0.0.0/8', 'network number mapped to inetnum';
     is $q{netname}, 'JPNIC-NET-JP', 'network name mapped to netname';
     is $q{descr}, 'Japan Network Information Center', 'organization name mapped to descr';
+    is $q{'assigned date'}, '2005/01/28', 'bracket-only field parsed';
     is $q{country}, 'JP', 'country parsed from colon format';
     like $q{fullinfo}, qr/JPNIC database/, 'fullinfo contains raw output';
 };
