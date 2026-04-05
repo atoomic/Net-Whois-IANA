@@ -490,6 +490,25 @@ subtest 'is_mine' => sub {
         is $iana->is_mine('10.0.0.1'), 0, 'returns 0 when no cidr data';
     };
 
+    subtest 'IPv6 CIDRs pass through without IPv4 padding' => sub {
+        my $iana = Net::Whois::IANA->new;
+        $iana->{QUERY} = { cidr => ['2001:db8::/32'] };
+
+        $iana->is_mine('2001:db8::1');
+        is $cidrlookup_args[1], '2001:db8::/32',
+            'IPv6 CIDR not corrupted by IPv4 padding logic';
+    };
+
+    subtest 'mixed IPv4 and IPv6 CIDRs handled correctly' => sub {
+        my $iana = Net::Whois::IANA->new;
+
+        $iana->is_mine( '10.0.0.1', '10/8', '2001:db8::/32' );
+        is $cidrlookup_args[1], '10.0.0.0/8',
+            'short IPv4 CIDR still padded';
+        is $cidrlookup_args[2], '2001:db8::/32',
+            'IPv6 CIDR preserved alongside IPv4';
+    };
+
     $mock_cidr->unmock_all;
 };
 

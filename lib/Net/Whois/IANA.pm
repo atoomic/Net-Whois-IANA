@@ -579,10 +579,15 @@ sub is_mine ($$;@) {
     }
 
     @cidr = map {
-        my @dots = ( split /\./ );
-        my $pad = '.0' x ( 4 - @dots );
-        s|(/.*)|$pad$1|;
-        $_;
+        if (/:/) {
+            $_;    # IPv6 CIDR — no padding needed
+        }
+        else {
+            my @dots = ( split /\./ );
+            my $pad = '.0' x ( 4 - @dots );
+            s|(/.*)|$pad$1|;
+            $_;
+        }
       }
       map  { split(/\s+/) }
       grep { defined $_ } @cidr;
