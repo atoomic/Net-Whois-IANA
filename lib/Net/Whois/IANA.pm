@@ -272,7 +272,10 @@ sub post_process_query (%) {
 sub whois_query ($%) {
     my ( $self, %params ) = @_;
 
-    $self->init_query(%params);
+    if ( my $err = $self->init_query(%params) ) {
+        $self->{QUERY} = {};
+        return $err;
+    }
     $self->{QUERY} = {};
 
     for my $source_name (@DEFAULT_SOURCE_ORDER) {
