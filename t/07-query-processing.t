@@ -254,6 +254,18 @@ subtest 'lacnic_process_query' => sub {
         is $result{netname}, 'TELEPHO', 'netname mapped from ownerid';
         is $result{source}, 'LACNIC', 'source set';
         is $result{country}, 'BR', 'country preserved';
+        is $result{cidr}, '200.0.0.0/16', 'cidr preserved from inetnum';
+        like $result{inetnum}, qr/200\.0\.0\.0\s*-\s*200\.0\.255\.255/, 'inetnum converted from CIDR to range';
+    };
+
+    subtest 'handles missing inetnum' => sub {
+        my %result = Net::Whois::IANA::lacnic_process_query(
+            owner   => 'Some Org',
+            ownerid => 'SOMEORG',
+            country => 'BR',
+        );
+        is $result{permission}, 'allowed', 'permission set even without inetnum';
+        ok !exists $result{cidr}, 'cidr not set without inetnum';
     };
 
     subtest 'country fallback from nserver' => sub {
