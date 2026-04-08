@@ -22,11 +22,7 @@ my %WriteMakefileArgs = (
   },
   "TEST_REQUIRES" => {
     "ExtUtils::MakeMaker" => 0,
-    "File::Slurper" => 0,
     "File::Spec" => 0,
-    "File::Temp" => 0,
-    "FindBin" => 0,
-    "List::MoreUtils" => 0,
     "Test2::Bundle::Extended" => 0,
     "Test2::Plugin::NoWarnings" => 0,
     "Test2::Suite" => "0.000071",
@@ -45,12 +41,8 @@ my %WriteMakefileArgs = (
 
 my %FallbackPrereqs = (
   "ExtUtils::MakeMaker" => 0,
-  "File::Slurper" => 0,
   "File::Spec" => 0,
-  "File::Temp" => 0,
-  "FindBin" => 0,
   "IO::Socket" => 0,
-  "List::MoreUtils" => 0,
   "Net::CIDR" => "0.22",
   "Test2::Bundle::Extended" => 0,
   "Test2::Plugin::NoWarnings" => 0,
