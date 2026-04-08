@@ -327,6 +327,58 @@ subtest 'whois_query applies post_process_query' => sub {
 };
 
 # =============================================================================
+# whois_query: early return on init_query failure
+# =============================================================================
+
+subtest 'whois_query returns early on invalid IP without connecting' => sub {
+
+    my $connect_called = 0;
+
+    $mock_iana->redefine(
+        source_connect => sub {
+            $connect_called++;
+            return FakeSocket->new([]);
+        },
+    );
+
+    my $iana = Net::Whois::IANA->new;
+    my $result;
+    my $warnings = warnings {
+        $result = $iana->whois_query( -ip => 'not-an-ip' );
+    };
+
+    is $result, {}, 'returns empty hashref for invalid IP';
+    is $connect_called, 0, 'no network connections attempted';
+    ok( ( grep { /Method usage/ } @$warnings ), 'init_query warning emitted' );
+
+    $mock_iana->unmock_all;
+};
+
+subtest 'whois_query returns early on unknown whois server' => sub {
+
+    my $connect_called = 0;
+
+    $mock_iana->redefine(
+        source_connect => sub {
+            $connect_called++;
+            return FakeSocket->new([]);
+        },
+    );
+
+    my $iana = Net::Whois::IANA->new;
+    my $result;
+    my $warnings = warnings {
+        $result = $iana->whois_query( -ip => '8.8.8.8', -whois => 'bogus' );
+    };
+
+    is $result, {}, 'returns empty hashref for unknown whois server';
+    is $connect_called, 0, 'no network connections attempted';
+    ok( ( grep { /Unknown whois server/ } @$warnings ), 'unknown server warning emitted' );
+
+    $mock_iana->unmock_all;
+};
+
+# =============================================================================
 # source_connect: query_sub assignment
 # =============================================================================
 
