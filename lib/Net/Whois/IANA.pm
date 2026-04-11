@@ -170,8 +170,10 @@ sub set_source ($$) {
     my $self   = shift;
     my $source = shift;
 
-    $self->{source} = {%IANA} || return 0 unless $source;
-    return 0 unless $source;
+    unless ($source) {
+        $self->{source} = {%IANA};
+        return 0;
+    }
     unless ( ref $source ) {
         if ( $IANA{$source} ) {
             $self->{source} = { $source => $IANA{$source} };
@@ -482,12 +484,6 @@ sub arin_process_query (%) {
     $query{status}     = $query{nettype};
     $query{inetnum}    = $query{netrange};
     $query{source}     = 'ARIN';
-    if ( defined $query{cidr} && $query{cidr} =~ /\,/ ) {
-        $query{cidr} = [ split( /\s*\,\s*/, $query{cidr} ) ];
-    }
-    else {
-        $query{cidr} = [ $query{cidr} ];
-    }
 
     return %query;
 }
