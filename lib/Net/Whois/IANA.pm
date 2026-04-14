@@ -516,6 +516,8 @@ sub lacnic_read_query ($$) {
 sub lacnic_process_query (%) {
     my %query = @_;
 
+    return () if !$query{inetnum} && !$query{inet6num};
+
     $query{permission} = 'allowed';
     $query{descr}      = $query{owner};
     $query{netname}    = $query{ownerid};
@@ -523,6 +525,9 @@ sub lacnic_process_query (%) {
     if ( $query{inetnum} ) {
         $query{cidr}    = $query{inetnum};
         $query{inetnum} = ( Net::CIDR::cidr2range( $query{cidr} ) )[0];
+    }
+    elsif ( $query{inet6num} ) {
+        $query{cidr} = [ Net::CIDR::range2cidr( uc( $query{inet6num} ) ) ];
     }
     unless ( $query{country} ) {
         if ( $query{nserver} && $query{nserver} =~ /\.(\w\w)$/ ) {

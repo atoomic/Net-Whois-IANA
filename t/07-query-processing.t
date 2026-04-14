@@ -283,6 +283,29 @@ subtest 'lacnic_process_query' => sub {
         );
         is scalar keys %result, 0, 'returns empty when no country found';
     };
+
+    subtest 'rejects missing inetnum and inet6num' => sub {
+        my %result = Net::Whois::IANA::lacnic_process_query(
+            owner   => 'Some Org',
+            ownerid => 'SOMEORG',
+            country => 'BR',
+        );
+        is scalar keys %result, 0, 'returns empty when no address range';
+    };
+
+    subtest 'inet6num produces CIDR' => sub {
+        my %result = Net::Whois::IANA::lacnic_process_query(
+            owner    => 'NIC.br',
+            ownerid  => 'NICBR',
+            inet6num => '2001:0db8:0000:0000:0000:0000:0000:0000 - 2001:0db8:ffff:ffff:ffff:ffff:ffff:ffff',
+            country  => 'BR',
+        );
+        is $result{permission}, 'allowed', 'permission set';
+        is $result{source}, 'LACNIC', 'source set';
+        ok ref $result{cidr} eq 'ARRAY', 'cidr is arrayref';
+        ok scalar @{ $result{cidr} } > 0, 'cidr is non-empty';
+        like $result{cidr}[0], qr/2001:/, 'cidr contains IPv6 prefix';
+    };
 };
 
 # --- afrinic_process_query ---
