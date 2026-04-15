@@ -275,7 +275,15 @@ sub whois_query ($%) {
     $self->init_query(%params);
     $self->{QUERY} = {};
 
-    for my $source_name (@DEFAULT_SOURCE_ORDER) {
+    # Iterate configured sources only: DEFAULT_SOURCE_ORDER for known sources,
+    # then any custom source names not in the default list.
+    my @sources = grep { exists $self->{source}{$_} } @DEFAULT_SOURCE_ORDER;
+    {
+        my %seen = map { $_ => 1 } @sources;
+        push @sources, grep { !$seen{$_} } sort keys %{ $self->{source} };
+    }
+
+    for my $source_name (@sources) {
         print STDERR "Querying $source_name ...\n" if $params{-debug};
         my $sock = $self->source_connect($source_name)
           || Carp::carp "Connection failed to $source_name." && next;
