@@ -511,4 +511,83 @@ subtest 'is_mine' => sub {
     $mock_cidr->unmock_all;
 };
 
+# =============================================================================
+# whois_query: custom sources via -mywhois are queried
+# =============================================================================
+
+subtest 'whois_query queries custom source names via -mywhois' => sub {
+
+    my $queried_sources = [];
+
+    $mock_iana->redefine(
+        source_connect => sub {
+            my ( $self, $source_name ) = @_;
+            push @$queried_sources, $source_name;
+            $self->{query_sub} = sub {
+                return (
+                    country    => 'XX',
+                    netname    => 'CUSTOM-NET',
+                    inetnum    => '10.0.0.0 - 10.0.0.255',
+                    cidr       => ['10.0.0.0/24'],
+                    permission => 'allowed',
+                    fullinfo   => "custom\n",
+                );
+            };
+            return FakeSocket->new([]);
+        },
+    );
+
+    my $custom_query = sub { return ( test => 1 ) };
+    my %custom_source = (
+        mycorp => [ ['whois.mycorp.com', 43, 30, $custom_query] ],
+    );
+
+    my $iana = Net::Whois::IANA->new;
+    $iana->whois_query( -ip => '10.0.0.1', -mywhois => \%custom_source );
+
+    is $queried_sources, ['mycorp'],
+        'only the custom source was queried, not DEFAULT_SOURCE_ORDER';
+    is $iana->country(), 'XX', 'result from custom source';
+
+    $mock_iana->unmock_all;
+};
+
+# =============================================================================
+# whois_query: -whois produces no spurious connection warnings
+# =============================================================================
+
+subtest 'whois_query with -whois produces no spurious warnings' => sub {
+
+    $mock_iana->redefine(
+        source_connect => sub {
+            my ( $self, $source_name ) = @_;
+            $self->{query_sub} = sub {
+                return (
+                    country    => 'JP',
+                    netname    => 'APNIC-NET',
+                    inetnum    => '1.0.0.0 - 1.0.0.255',
+                    cidr       => ['1.0.0.0/24'],
+                    permission => 'allowed',
+                    fullinfo   => "test\n",
+                );
+            };
+            return FakeSocket->new([]);
+        },
+    );
+
+    my $iana = Net::Whois::IANA->new;
+    my $warnings = warnings {
+        $iana->whois_query( -ip => '1.0.0.1', -whois => 'apnic' );
+    };
+
+    is $iana->country(), 'JP', 'got result from apnic';
+    # With the fix, only apnic is queried — no "Connection failed" warnings
+    # for the 7 other sources that were never configured
+    my @conn_warnings = grep { /Connection failed/ } @$warnings;
+    is scalar @conn_warnings, 0,
+        'no spurious connection-failed warnings for unconfigured sources';
+
+    $mock_iana->unmock_all;
+};
+
 done_testing;
