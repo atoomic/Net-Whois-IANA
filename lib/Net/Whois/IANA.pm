@@ -758,8 +758,8 @@ and [rarely] unprecise information.
 =head1 DESCRIPTION
 
 Various Net::Whois and IP:: modules have been created.
-This is just something I had to write because none of them s
-uited my purpose. It is conceptually based on Net::Whois::IP
+This is just something I had to write because none of them
+suited my purpose. It is conceptually based on Net::Whois::IP
 by Ben Schmitz <bschmitz@orbitz.com>, but differs from it by
 a few points:
 
@@ -770,7 +770,7 @@ a few points:
 =item It has a few immediate methods for representing some whois fields.
 
 =item It allows the user to specify explicitly which whois servers
-to query, and those servers might even not be of the four main
+to query, and those servers might even not be among the IANA
 registries mentioned above.
 
 =item It has more robust error handling.
@@ -851,7 +851,7 @@ Returns the "source:" field contents of the queried IP.
 
 =head2 $iana->server()
 
-Returns the server that returned most valuable ntents of
+Returns the server that returned most valuable contents of
 the queried IP.
 
 =head2 $iana->cidr()
