@@ -6,6 +6,7 @@ use strict;
 use warnings;
 
 use Carp       ();
+use IO::Select ();
 use IO::Socket ();
 use Net::CIDR  ();
 
@@ -95,13 +96,80 @@ sub whois_connect ($;$$) {
             );
         };
 
-        return $sock if $sock;
+        if ($sock) {
+            # Stash the timeout for the read phase. IO::Socket::INET's
+            # Timeout parameter only governs connect; without this,
+            # while (<$sock>) blocks indefinitely on a stalled server.
+            ${ *$sock }{_net_whois_iana_timeout} = $timeout;
+            return $sock;
+        }
 
         Carp::carp "Cannot connect to $host at port $port";
         Carp::carp $@ if $@;
         sleep $sleep unless $iter == $retries;    # avoid the last sleep
     }
     return 0;
+}
+
+# _readline_with_timeout — drop-in replacement for `<$sock>` that enforces
+# a read deadline. Falls back to plain readline when the handle has no
+# fileno (tied/overloaded mocks used in tests).
+#
+# Uses sysread + a per-socket line buffer so that IO::Select->can_read,
+# which reflects kernel-level readiness, isn't fooled by data sitting in
+# PerlIO's stdio buffer (the classic select-on-buffered-IO trap).
+#
+# Returns one line (with trailing "\n") on success, the trailing partial
+# line on EOF, and undef on timeout or sysread error.
+sub _readline_with_timeout ($) {
+    my ($sock) = @_;
+
+    # Mock-friendly path: no fileno → no select possible. Tied filehandles
+    # without FILENO return undef from fileno(); overloaded blessed objects
+    # raise an error which we trap.
+    my $fd = eval { fileno($sock) };
+    if ( !defined $fd ) {
+        return scalar <$sock>;
+    }
+
+    my $timeout = ${ *$sock }{_net_whois_iana_timeout};
+    $timeout = $WHOIS_TIMEOUT unless defined $timeout;
+
+    my $buf_ref = \${ *$sock }{_net_whois_iana_rdbuf};
+    $$buf_ref = '' unless defined $$buf_ref;
+
+    while (1) {
+
+        # If a complete line is already buffered, return it without
+        # touching the kernel.
+        if ( $$buf_ref =~ s/\A([^\n]*\n)// ) {
+            return $1;
+        }
+
+        my $select = IO::Select->new($sock);
+        if ( !$select->can_read($timeout) ) {
+            Carp::carp "whois read timed out after ${timeout}s";
+            return undef;
+        }
+
+        my $chunk;
+        my $n = sysread( $sock, $chunk, 4096 );
+        if ( !defined $n ) {
+            Carp::carp "whois read error: $!";
+            return undef;
+        }
+        if ( $n == 0 ) {
+
+            # EOF: flush any trailing partial line, then signal end.
+            if ( length $$buf_ref ) {
+                my $tail = $$buf_ref;
+                $$buf_ref = '';
+                return $tail;
+            }
+            return undef;
+        }
+        $$buf_ref .= $chunk;
+    }
 }
 
 sub is_valid_ipv4 ($) {
@@ -318,7 +386,8 @@ sub ripe_read_query ($$) {
 
     my %query = ( fullinfo => '' );
     print $sock "-r $ip\n" or Carp::carp "write failed: $!";
-    while (<$sock>) {
+    while ( defined( my $line = _readline_with_timeout($sock) ) ) {
+        local $_ = $line;
         $query{fullinfo} .= $_;
         close $sock and return ( permission => 'denied' ) if /ERROR:201/;
         next if ( /^(\%|\#)/ || !/\:/ );
@@ -371,7 +440,8 @@ sub apnic_read_query ($$) {
     my %tmp;
     print $sock "-r $ip\n" or Carp::carp "write failed: $!";
     my $skip_block = 0;
-    while (<$sock>) {
+    while ( defined( my $line = _readline_with_timeout($sock) ) ) {
+        local $_ = $line;
         $query{fullinfo} .= $_;
         close $sock and return ( permission => 'denied' ) if /^\%201/;
         if (m{^\%}) {
@@ -443,7 +513,8 @@ sub arin_read_query ($$) {
     my %tmp = ();
 
     print $sock "+ $ip\n" or Carp::carp "write failed: $!";
-    while (<$sock>) {
+    while ( defined( my $line = _readline_with_timeout($sock) ) ) {
+        local $_ = $line;
         $query{fullinfo} .= $_;
         close $sock and return ( permission => 'denied' ) if /^\#201/;
         return () if /no match found for/i;
@@ -507,7 +578,8 @@ sub lacnic_read_query ($$) {
 
     print $sock "$ip\n" or Carp::carp "write failed: $!";
 
-    while (<$sock>) {
+    while ( defined( my $line = _readline_with_timeout($sock) ) ) {
+        local $_ = $line;
         $query{fullinfo} .= $_;
         close $sock
           and return ( permission => 'denied' )
@@ -605,7 +677,8 @@ sub jpnic_read_query ($$) {
         'network name'      => 'netname',
         'organization name' => 'descr',
     );
-    while (<$sock>) {
+    while ( defined( my $line = _readline_with_timeout($sock) ) ) {
+        local $_ = $line;
         $query{fullinfo} .= $_;
         close $sock and return ( permission => 'denied' ) if /^\%201|ERROR:201/;
         next if /^\%/ || /^\#/;
@@ -897,6 +970,15 @@ outputs of the IANA servers and because of some inconsistencies
 within each one of them. Its primary target is to collect info
 for general, shallow statistical purposes. The is_mine() method
 might be optimized.
+
+=head1 TIMEOUTS
+
+The per-source timeout (third element of each server triple in C<%IANA>,
+default 30 seconds) governs both the connect attempt and the per-read
+deadline. If a whois server stalls mid-response, the read aborts with a
+warning rather than blocking indefinitely. To raise or lower the read
+deadline for a custom source, set the third element of the server triple
+when calling C<whois_query> with C<-mywhois>.
 
 =head1 CAVEATS
 
