@@ -62,6 +62,30 @@ subtest 'set_source' => sub {
         is $iana->set_source( { bad => 'string' } ), 2, 'returns 2 for malformed hash';
     };
 
+    subtest 'invalid custom source - non-CODE ref at position 3' => sub {
+        my $iana   = Net::Whois::IANA->new;
+        my %custom = (
+            myserver => [ ['whois.example.com', 43, 30, 'not-a-coderef'] ],
+        );
+        is $iana->set_source(\%custom), 2, 'returns 2 when position 3 is a string';
+    };
+
+    subtest 'invalid custom source - hashref at position 3' => sub {
+        my $iana   = Net::Whois::IANA->new;
+        my %custom = (
+            myserver => [ ['whois.example.com', 43, 30, { bad => 1 }] ],
+        );
+        is $iana->set_source(\%custom), 2, 'returns 2 when position 3 is a hashref';
+    };
+
+    subtest 'valid custom source - CODE ref at position 3' => sub {
+        my $iana   = Net::Whois::IANA->new;
+        my %custom = (
+            myserver => [ ['whois.example.com', 43, 30, sub { return () }] ],
+        );
+        is $iana->set_source(\%custom), 0, 'returns 0 with valid CODE ref';
+    };
+
     subtest 'undef source sets all defaults' => sub {
         my $iana = Net::Whois::IANA->new;
         my $ret  = $iana->set_source(undef);

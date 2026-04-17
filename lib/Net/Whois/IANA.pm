@@ -145,7 +145,7 @@ sub is_valid_ipv6 {
             next;
         }
         return if $seg =~ /[^0-9a-fA-F]/;
-        return if length $seg == 0 || length $seg > 4;
+        return if length $seg > 4;
     }
     if ($cmp) {
 
@@ -181,7 +181,7 @@ sub set_source ($$) {
     }
     return 2
       unless ref $source eq 'HASH'
-      && ( scalar grep { ref $_ && ref $_ eq 'ARRAY' && @{$_} && ref $_->[0] && ref $_->[0] eq 'ARRAY' && @{ $_->[0] } && $_->[0][0] } values %{$source} ) == scalar keys %{$source};
+      && ( scalar grep { ref $_ && ref $_ eq 'ARRAY' && @{$_} && ref $_->[0] && ref $_->[0] eq 'ARRAY' && @{ $_->[0] } && $_->[0][0] && ( !defined $_->[0][3] || ref $_->[0][3] eq 'CODE' ) } values %{$source} ) == scalar keys %{$source};
     $self->{source} = $source;
     return 0;
 }
@@ -295,6 +295,9 @@ sub whois_query ($%) {
 
 sub default_query ($$) {
 
+    # NOTE: This fallback sends ARIN protocol ("+ $ip") regardless of the
+    # target server.  Custom -mywhois sources that omit a code ref at
+    # position 3 will silently use this ARIN-formatted query.
     return arin_query(@_);
 }
 
@@ -303,7 +306,7 @@ sub ripe_read_query ($$) {
     my ( $sock, $ip ) = @_;
 
     my %query = ( fullinfo => '' );
-    print $sock "-r $ip\n";
+    print $sock "-r $ip\n" or Carp::carp "write failed: $!";
     while (<$sock>) {
         $query{fullinfo} .= $_;
         close $sock and return ( permission => 'denied' ) if /ERROR:201/;
@@ -355,7 +358,7 @@ sub apnic_read_query ($$) {
 
     my %query = ( fullinfo => '' );
     my %tmp;
-    print $sock "-r $ip\n";
+    print $sock "-r $ip\n" or Carp::carp "write failed: $!";
     my $skip_block = 0;
     while (<$sock>) {
         $query{fullinfo} .= $_;
@@ -428,7 +431,7 @@ sub arin_read_query ($$) {
     my %query = ( fullinfo => '' );
     my %tmp = ();
 
-    print $sock "+ $ip\n";
+    print $sock "+ $ip\n" or Carp::carp "write failed: $!";
     while (<$sock>) {
         $query{fullinfo} .= $_;
         close $sock and return ( permission => 'denied' ) if /^\#201/;
@@ -491,7 +494,7 @@ sub lacnic_read_query ($$) {
 
     my %query = ( fullinfo => '' );
 
-    print $sock "$ip\n";
+    print $sock "$ip\n" or Carp::carp "write failed: $!";
 
     while (<$sock>) {
         $query{fullinfo} .= $_;
@@ -577,7 +580,7 @@ sub jpnic_read_query ($$) {
     my ( $sock, $ip ) = @_;
 
     my %query = ( fullinfo => '' );
-    print $sock "$ip/e\n";    # /e requests English output
+    print $sock "$ip/e\n" or Carp::carp "write failed: $!";    # /e requests English output
 
     # JPNIC uses bracket-style fields: "a. [Network Number] 1.2.3.0/24"
     # and also standard "key: value" lines
@@ -814,6 +817,11 @@ one overrides all of the IANA list for lookup. You can also set
 -debug option in order to trigger some verbosity in the output.
 
     $iana->whois_query(-ip=>$ip,-whois=>$whois|-mywhois=>\%mywhois)
+
+B<Note>: when using C<-mywhois>, each custom source entry may include
+a code reference at position 3 to handle the query protocol.  If omitted
+(or C<undef>), the module falls back to ARIN protocol (C<"+ $ip\n">).
+Make sure this is appropriate for your target server.
 
 =head2 $iana->descr()
 
