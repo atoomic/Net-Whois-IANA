@@ -983,7 +983,7 @@ default 30 seconds) governs both the connect attempt and each individual
 read call. If a whois server stalls mid-response, the current read call
 aborts with a warning after the timeout elapses. Note that the timeout
 applies to each C<select> + C<sysread> call independently, not as a
-cumulative wall-clock deadline for the entire response — a server that
+cumulative wall-clock deadline for the entire response - a server that
 drips data slowly (one byte just before each deadline) could keep the
 connection alive longer than a single timeout period. To raise or lower
 the read deadline for a custom source, set the third element of the
