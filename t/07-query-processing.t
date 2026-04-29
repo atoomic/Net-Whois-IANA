@@ -286,13 +286,14 @@ subtest 'lacnic_process_query' => sub {
         is scalar keys %result, 0, 'returns empty when no country found';
     };
 
-    subtest 'rejects missing inetnum and inet6num' => sub {
+    subtest 'handles missing inetnum' => sub {
         my %result = Net::Whois::IANA::lacnic_process_query(
             owner   => 'Some Org',
             ownerid => 'SOMEORG',
             country => 'BR',
         );
-        is scalar keys %result, 0, 'returns empty when no address range';
+        is $result{permission}, 'allowed', 'permission set even without inetnum';
+        ok !exists $result{cidr}, 'cidr not set without inetnum';
     };
 
     subtest 'inet6num produces CIDR' => sub {
