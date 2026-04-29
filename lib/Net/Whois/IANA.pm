@@ -170,8 +170,10 @@ sub set_source ($$) {
     my $self   = shift;
     my $source = shift;
 
-    $self->{source} = {%IANA} || return 0 unless $source;
-    return 0 unless $source;
+    unless ($source) {
+        $self->{source} = {%IANA};
+        return 0;
+    }
     unless ( ref $source ) {
         if ( $IANA{$source} ) {
             $self->{source} = { $source => $IANA{$source} };
