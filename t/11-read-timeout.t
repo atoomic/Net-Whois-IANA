@@ -48,6 +48,9 @@ subtest 'read times out and emits a warning when no data arrives' => sub {
         or diag "warnings were: @warnings";
 };
 
+# NOTE: This subtest reuses $read_sock/$write_sock from the timeout subtest
+# above. The subtests are intentionally order-dependent — the timeout subtest
+# must run first to verify the empty-socket case before data is written here.
 subtest 'read returns the next line when data is available' => sub {
     syswrite( $write_sock, "hello\nworld\n" );
 
