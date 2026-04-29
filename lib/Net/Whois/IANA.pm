@@ -5,10 +5,11 @@ use 5.006;
 use strict;
 use warnings;
 
-use Carp       ();
-use IO::Select ();
-use IO::Socket ();
-use Net::CIDR  ();
+use Carp          ();
+use IO::Select    ();
+use IO::Socket    ();
+use Net::CIDR     ();
+use Scalar::Util  ();
 
 use base 'Exporter';
 
@@ -100,7 +101,11 @@ sub whois_connect ($;$$) {
             # Stash the timeout for the read phase. IO::Socket::INET's
             # Timeout parameter only governs connect; without this,
             # while (<$sock>) blocks indefinitely on a stalled server.
-            ${ *$sock }{_net_whois_iana_timeout} = $timeout;
+            # Guard: only glob-based handles (real IO::Socket objects)
+            # support the *$sock stash; hash-based test mocks skip it.
+            if ( Scalar::Util::reftype($sock) eq 'GLOB' ) {
+                ${ *$sock }{_net_whois_iana_timeout} = $timeout;
+            }
             return $sock;
         }
 
