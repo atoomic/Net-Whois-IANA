@@ -157,10 +157,11 @@ subtest 'arin_process_query' => sub {
         is $result{inetnum}, '8.8.8.0 - 8.8.8.255', 'inetnum mapped from netrange';
         is $result{source}, 'ARIN', 'source set';
         is $result{remarks}, 'Some comment', 'remarks mapped from comment';
-        is $result{cidr}, '8.8.8.0/24', 'cidr passed through as-is (post_process_query normalizes)';
+        is ref $result{cidr}, 'ARRAY', 'cidr is arrayref';
+        is $result{cidr}[0], '8.8.8.0/24', 'cidr value correct';
     };
 
-    subtest 'passes through comma-separated CIDR for post_process_query' => sub {
+    subtest 'handles comma-separated CIDR' => sub {
         my %result = Net::Whois::IANA::arin_process_query(
             orgname  => 'Test Org',
             orgid    => 'TEST',
@@ -168,8 +169,10 @@ subtest 'arin_process_query' => sub {
             cidr     => '10.0.0.0/16, 10.1.0.0/16',
             nettype  => 'Direct Allocation',
         );
-        is $result{cidr}, '10.0.0.0/16, 10.1.0.0/16',
-            'cidr string preserved (post_process_query splits it)';
+        is ref $result{cidr}, 'ARRAY', 'cidr is arrayref';
+        is scalar @{ $result{cidr} }, 2, 'two CIDR entries';
+        is $result{cidr}[0], '10.0.0.0/16', 'first CIDR';
+        is $result{cidr}[1], '10.1.0.0/16', 'second CIDR';
     };
 
     subtest 'rejects RIPE orgid' => sub {

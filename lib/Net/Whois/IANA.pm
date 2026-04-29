@@ -484,6 +484,12 @@ sub arin_process_query (%) {
     $query{status}     = $query{nettype};
     $query{inetnum}    = $query{netrange};
     $query{source}     = 'ARIN';
+    if ( defined $query{cidr} && $query{cidr} =~ /\,/ ) {
+        $query{cidr} = [ split( /\s*\,\s*/, $query{cidr} ) ];
+    }
+    else {
+        $query{cidr} = [ $query{cidr} ];
+    }
 
     return %query;
 }
