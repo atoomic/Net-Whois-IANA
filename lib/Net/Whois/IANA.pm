@@ -607,8 +607,6 @@ sub lacnic_read_query ($$) {
 sub lacnic_process_query (%) {
     my %query = @_;
 
-    return () if !$query{inetnum} && !$query{inet6num};
-
     $query{permission} = 'allowed';
     $query{descr}      = $query{owner};
     $query{netname}    = $query{ownerid};
