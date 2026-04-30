@@ -12,7 +12,8 @@ use Net::Whois::IANA;
 
 use Test::MockModule;
 
-# note: we are mocking some internal to freeze the ripe reply
+# Fully offline: mock source_connect to avoid real TCP connections.
+# The query_sub is mocked to return hardcoded data, so no socket is needed.
 my $mocked_iana = Test::MockModule->new('Net::Whois::IANA');
 
 $mocked_iana->redefine(
@@ -20,14 +21,13 @@ $mocked_iana->redefine(
         my ( $self, $source_name ) = @_;
 
         note "mocked source_connect for ", $source_name;
-        my $sock = $mocked_iana->original('source_connect')->( $self, $source_name );
 
         $self->{query_sub} = sub {
             return %{ _ripe_query() } if $source_name eq 'ripe';
             return ();
         };
 
-        return $sock;
+        return 1;    # truthy fake — query_sub ignores the socket argument
     }
 );
 
@@ -39,24 +39,13 @@ $iana->whois_query( -ip => '191.96.58.222', -debug => 0 );
 
 my $cidr = $iana->cidr;
 
-if ($cidr) {    # some smokers are flapping... this is kind of a big todo...
+is ref $cidr, 'ARRAY', "cidr is an array ref" or diag "CIDR: ", explain $cidr;
 
-    is ref $cidr, 'ARRAY', "cidr is an array ref" or diag "CIDR: ", explain $cidr;
+note explain $cidr;
 
-    note explain $cidr;
+like $cidr->[0], qr{^\Q191.96.0.0/16\E}, 'cidr';
 
-    if ( defined $cidr->[0] ) {    # query can fail on some smokers...
-
-        like $cidr->[0], qr{^\Q191.96.0.0/16\E}, 'cidr';
-
-        # view on travis smoker this can be either 191.96.58/24 or 191.96.58-191.96.58...
-        ### need to investigate
-
-        #is $iana->inetnum, '191.96.58-191.96.58', 'range';
-        ok Net::CIDR::cidrvalidate( $cidr->[0] );
-    }
-
-}
+ok Net::CIDR::cidrvalidate( $cidr->[0] ), 'CIDR is valid';
 
 done_testing;
 exit;
