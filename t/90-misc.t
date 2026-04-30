@@ -23,9 +23,10 @@ my $mocked_cidr = Test::MockModule->new('Net::CIDR')    # .
     }
   );
 
+# Populate QUERY directly — no network call needed. The test target is
+# is_mine(), not the whois query pipeline.
 my $iana = Net::Whois::IANA->new;
-my $ip   = '193.0.0.135';
-$iana->whois_query( -ip => $ip );
+$iana->{QUERY} = { cidr => ['193.0.0.0/21'] };
 
 $cidrlookup_answer = 1;
 ok( $iana->is_mine('193.0.1.1') );
