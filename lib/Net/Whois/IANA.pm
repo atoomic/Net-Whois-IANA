@@ -552,6 +552,8 @@ sub arin_process_query (%) {
     return ()
       if $query{orgid} && $query{orgid} =~ /^\s*(?:RIPE|LACNIC|APNIC|AFRINIC)\s*$/;
 
+    return () if !$query{netrange} && !$query{cidr};
+
     $query{permission} = 'allowed';
     $query{descr}      = $query{orgname};
     $query{remarks}    = $query{comment};
