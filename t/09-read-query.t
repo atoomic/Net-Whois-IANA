@@ -278,6 +278,7 @@ subtest 'arin_read_query: no match returns empty' => sub {
     my %q = Net::Whois::IANA::arin_read_query( $sock, '192.0.2.1' );
 
     is scalar keys %q, 0, 'returns empty on no match';
+    ok tied(*$sock)->{closed}, 'socket was closed on no match';
 };
 
 subtest 'arin_read_query: permission denied on #201' => sub {

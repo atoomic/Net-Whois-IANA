@@ -522,7 +522,7 @@ sub arin_read_query ($$) {
         local $_ = $line;
         $query{fullinfo} .= $_;
         close $sock and return ( permission => 'denied' ) if /^\#201/;
-        return () if /no match found for/i;
+        close $sock and return () if /no match found for/i;
         next if ( /^\#/ || !/\:/ );
         s/\s+$//;
         my ( $field, $value ) = split( /:/, $_, 2 );
