@@ -363,7 +363,15 @@ sub whois_query ($%) {
         print STDERR "Querying $source_name ...\n" if $params{-debug};
         my $sock = $self->source_connect($source_name)
           || Carp::carp "Connection failed to $source_name." && next;
-        my %query = $self->{query_sub}( $sock, $params{-ip} );
+        my %query;
+        {
+            local $@;
+            %query = eval { $self->{query_sub}( $sock, $params{-ip} ) };
+            if ($@) {
+                Carp::carp "Query error for $source_name: $@";
+                next;
+            }
+        }
 
         next unless keys %query;
         do { Carp::carp "Warning: permission denied at $source_name server $self->{whois_host}\n"; next }

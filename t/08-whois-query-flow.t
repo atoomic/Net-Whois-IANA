@@ -642,4 +642,54 @@ subtest 'whois_query with -whois produces no spurious warnings' => sub {
     $mock_iana->unmock_all;
 };
 
+# =============================================================================
+# whois_query: query_sub die is caught and next source is tried
+# =============================================================================
+
+subtest 'whois_query catches die in query_sub and continues' => sub {
+
+    my $queried_sources = [];
+
+    $mock_iana->redefine(
+        source_connect => sub {
+            my ( $self, $source_name ) = @_;
+            push @$queried_sources, $source_name;
+
+            if ( $source_name eq 'arin' ) {
+                # Simulate a die (e.g., Net::CIDR::range2cidr on bad input)
+                $self->{query_sub} = sub { die "Bad starting address\n" };
+            }
+            elsif ( $source_name eq 'ripe' ) {
+                $self->{query_sub} = sub {
+                    return (
+                        country    => 'DE',
+                        netname    => 'RIPE-TEST',
+                        inetnum    => '5.0.0.0 - 5.0.0.255',
+                        cidr       => ['5.0.0.0/24'],
+                        permission => 'allowed',
+                        fullinfo   => "test\n",
+                    );
+                };
+            }
+            else {
+                $self->{query_sub} = sub { return () };
+            }
+
+            return FakeSocket->new([]);
+        },
+    );
+
+    my $iana = Net::Whois::IANA->new;
+    my $warnings = warnings {
+        $iana->whois_query( -ip => '5.0.0.1' );
+    };
+
+    is $iana->country(), 'DE', 'recovered from arin die, got result from ripe';
+    ok( ( grep { /Query error for arin/ } @$warnings ),
+        'warning emitted about the query error' );
+    is $queried_sources, [qw(arin ripe)], 'tried arin (died), then ripe (succeeded)';
+
+    $mock_iana->unmock_all;
+};
+
 done_testing;
