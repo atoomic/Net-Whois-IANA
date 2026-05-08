@@ -236,6 +236,20 @@ subtest 'arin_process_query' => sub {
         );
         is scalar keys %result, 0, 'whitespace-padded orgid still rejected';
     };
+
+    subtest 'rejects empty input (no netrange or cidr)' => sub {
+        my %result = Net::Whois::IANA::arin_process_query();
+        is scalar keys %result, 0, 'returns empty for empty input';
+    };
+
+    subtest 'rejects missing netrange and cidr' => sub {
+        my %result = Net::Whois::IANA::arin_process_query(
+            orgname => 'Some Org',
+            orgid   => 'SOMEORG',
+            nettype => 'Direct Allocation',
+        );
+        is scalar keys %result, 0, 'returns empty without netrange or cidr';
+    };
 };
 
 # --- lacnic_process_query ---
