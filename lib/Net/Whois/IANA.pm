@@ -832,7 +832,7 @@ Net::Whois::IANA - A universal WHOIS data extractor.
   print "Source: "  , $iana->source()             , "\n";
   print "Server: "  , $iana->server()             , "\n";
   print "Inetnum: " , $iana->inetnum()            , "\n";
-  print "CIDR: "    , join(",", $iana->cidr())    , "\n";
+  print "CIDR: "    , join(",", @{$iana->cidr()})  , "\n";
 
 
 =head1 ABSTRACT
@@ -950,7 +950,8 @@ the queried IP.
 
 =head2 $iana->cidr()
 
-Returns an array in CIDR notation (1.2.3.4/5) of the IP's registered range.
+Returns an arrayref in CIDR notation (e.g. C<['1.2.3.4/5']>) of the
+IP's registered range.  Dereference with C<@{$iana-E<gt>cidr()}>.
 
 =head2 $iana->fullinfo()
 
