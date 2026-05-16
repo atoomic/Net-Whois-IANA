@@ -642,4 +642,92 @@ subtest 'whois_query with -whois produces no spurious warnings' => sub {
     $mock_iana->unmock_all;
 };
 
+subtest 'whois_query passes -timeout override to source_connect' => sub {
+
+    my @connect_timeouts;
+    $mock_iana->redefine(
+        source_connect => sub {
+            my ( $self, $source_name, $timeout_override ) = @_;
+            push @connect_timeouts, $timeout_override;
+            $self->{query_sub} = sub {
+                return (
+                    country    => 'US',
+                    netname    => 'TEST-NET',
+                    inetnum    => '192.0.2.0 - 192.0.2.255',
+                    cidr       => ['192.0.2.0/24'],
+                    permission => 'allowed',
+                    fullinfo   => "test\n",
+                );
+            };
+            return FakeSocket->new([]);
+        },
+    );
+
+    my $iana = Net::Whois::IANA->new;
+    $iana->whois_query( -ip => '192.0.2.1', -timeout => 5 );
+
+    is $connect_timeouts[0], 5, 'timeout override passed to source_connect';
+
+    $mock_iana->unmock_all;
+};
+
+subtest 'whois_query without -timeout passes undef to source_connect' => sub {
+
+    my @connect_timeouts;
+    $mock_iana->redefine(
+        source_connect => sub {
+            my ( $self, $source_name, $timeout_override ) = @_;
+            push @connect_timeouts, $timeout_override;
+            $self->{query_sub} = sub {
+                return (
+                    country    => 'DE',
+                    netname    => 'RIPE-NET',
+                    inetnum    => '193.0.0.0 - 193.0.7.255',
+                    cidr       => ['193.0.0.0/21'],
+                    permission => 'allowed',
+                    fullinfo   => "test\n",
+                );
+            };
+            return FakeSocket->new([]);
+        },
+    );
+
+    my $iana = Net::Whois::IANA->new;
+    $iana->whois_query( -ip => '193.0.0.1' );
+
+    is $connect_timeouts[0], undef, 'no timeout override when -timeout not given';
+
+    $mock_iana->unmock_all;
+};
+
+subtest 'source_connect applies timeout override to whois_connect' => sub {
+
+    my @connect_args;
+    $mock_iana->redefine(
+        whois_connect => sub {
+            my ($arg) = @_;
+            my @arr = ref $arg ? @$arg : ($arg);
+            push @connect_args, \@arr;
+            return FakeSocket->new([]);
+        },
+    );
+
+    my $iana = Net::Whois::IANA->new;
+    $iana->set_source('arin');
+
+    # With timeout override
+    $iana->source_connect( 'arin', 7 );
+    is $connect_args[0][2], 7, 'timeout override applied to connect args';
+
+    # Without timeout override — the stored value in %IANA is used as-is.
+    # (%IANA is compiled in a BEGIN block before $WHOIS_TIMEOUT is assigned,
+    # so the stored value is undef; whois_connect handles the fallback.)
+    @connect_args = ();
+    $iana->source_connect('arin');
+    is $connect_args[0][2], undef,
+        'original (undef) timeout preserved when no override';
+
+    $mock_iana->unmock_all;
+};
+
 done_testing;
