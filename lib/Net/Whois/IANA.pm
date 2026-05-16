@@ -298,11 +298,13 @@ Custom sources must be of form:
     }
 }
 
-sub source_connect ($$) {
-    my ( $self, $source_name ) = @_;
+sub source_connect ($$;$) {
+    my ( $self, $source_name, $timeout_override ) = @_;
 
     foreach my $server_ref ( @{ $self->{source}{$source_name} } ) {
-        if ( my $sock = whois_connect($server_ref) ) {
+        my @connect_args = @{$server_ref};
+        $connect_args[2] = $timeout_override if defined $timeout_override;
+        if ( my $sock = whois_connect( \@connect_args ) ) {
             my ( $whois_host, $whois_port, $whois_timeout, $query_code ) = @{$server_ref};
             $self->{query_sub} = $query_code
               && ref $query_code eq 'CODE' ? $query_code : \&default_query;
@@ -351,6 +353,8 @@ sub whois_query ($%) {
     }
     $self->{QUERY} = {};
 
+    my $timeout_override = $params{-timeout};
+
     # Iterate configured sources only: DEFAULT_SOURCE_ORDER for known sources,
     # then any custom source names not in the default list.
     my @sources = grep { exists $self->{source}{$_} } @DEFAULT_SOURCE_ORDER;
@@ -361,7 +365,7 @@ sub whois_query ($%) {
 
     for my $source_name (@sources) {
         print STDERR "Querying $source_name ...\n" if $params{-debug};
-        my $sock = $self->source_connect($source_name)
+        my $sock = $self->source_connect( $source_name, $timeout_override )
           || Carp::carp "Connection failed to $source_name." && next;
         my %query = $self->{query_sub}( $sock, $params{-ip} );
 
@@ -910,12 +914,15 @@ servers by specifying the '-mywhois=>\%mywhois' pair. The latter
 one overrides all of the IANA list for lookup. You can also set
 -debug option in order to trigger some verbosity in the output.
 
-    $iana->whois_query(-ip=>$ip,-whois=>$whois|-mywhois=>\%mywhois)
+    $iana->whois_query(-ip=>$ip,-whois=>$whois|-mywhois=>\%mywhois,-timeout=>$secs)
 
 B<Note>: when using C<-mywhois>, each custom source entry may include
 a code reference at position 3 to handle the query protocol.  If omitted
 (or C<undef>), the module falls back to ARIN protocol (C<"+ $ip\n">).
 Make sure this is appropriate for your target server.
+
+The optional C<-timeout> parameter overrides the per-source timeout for
+this query only (both connect and read phases).
 
 =head2 $iana->descr()
 
@@ -988,6 +995,15 @@ drips data slowly (one byte just before each deadline) could keep the
 connection alive longer than a single timeout period. To raise or lower
 the read deadline for a custom source, set the third element of the
 server triple when calling C<whois_query> with C<-mywhois>.
+
+You can also override the timeout on a per-query basis using the
+C<-timeout> parameter:
+
+  $iana->whois_query(-ip => $ip, -timeout => 10);
+
+This overrides the per-source timeout for all connection attempts and
+reads within that single query, without modifying the global
+C<$WHOIS_TIMEOUT> or the C<%IANA> configuration.
 
 =head1 CAVEATS
 
