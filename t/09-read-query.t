@@ -339,24 +339,26 @@ subtest 'lacnic_read_query: permission denied on %201' => sub {
     ok tied(*$sock)->{closed}, 'socket closed';
 };
 
-subtest 'lacnic_read_query: rate limit returns denied' => sub {
+subtest 'lacnic_read_query: rate limit returns empty (silent skip)' => sub {
     my $sock = fake_sock([
         "% Query rate limit exceeded. Blocked for 300 seconds.\n",
     ]);
 
     my %q = Net::Whois::IANA::lacnic_read_query( $sock, '200.0.0.1' );
 
-    is $q{permission}, 'denied', 'rate limit treated as denied';
+    is scalar keys %q, 0, 'rate limit returns empty for silent fallthrough';
+    ok tied(*$sock)->{closed}, 'socket closed on rate limit';
 };
 
-subtest 'lacnic_read_query: not assigned to LACNIC returns denied' => sub {
+subtest 'lacnic_read_query: not assigned to LACNIC returns empty (silent skip)' => sub {
     my $sock = fake_sock([
         "% Not assigned to LACNIC\n",
     ]);
 
     my %q = Net::Whois::IANA::lacnic_read_query( $sock, '1.0.0.1' );
 
-    is $q{permission}, 'denied', 'not assigned treated as denied';
+    is scalar keys %q, 0, 'not assigned returns empty for silent fallthrough';
+    ok tied(*$sock)->{closed}, 'socket closed on not assigned';
 };
 
 subtest 'lacnic_read_query: non-lacnic resource returns empty' => sub {

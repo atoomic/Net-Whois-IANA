@@ -586,9 +586,10 @@ sub lacnic_read_query ($$) {
     while ( defined( my $line = _readline_with_timeout($sock) ) ) {
         local $_ = $line;
         $query{fullinfo} .= $_;
-        close $sock
-          and return ( permission => 'denied' )
-          if /^\%201/ || /^\% Query rate limit exceeded/ || /^\% Not assigned to LACNIC/ || /\% Permission denied/;
+        close $sock and return ( permission => 'denied' )
+          if /^\%201/ || /\% Permission denied/;
+        close $sock and return ()
+          if /^\% Query rate limit exceeded/ || /^\% Not assigned to LACNIC/;
         if (/^\% (\S+) resource:/) {
             my $srv = $1;
             close $sock and return () if $srv !~ /lacnic|brazil/i;
